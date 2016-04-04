@@ -23,6 +23,7 @@ import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -581,15 +582,11 @@ class CompactCalendarController {
                 float xPosition = widthPerDay * dayOfWeek + paddingWidth + paddingLeft + accumulatedScrollOffset.x + offset - paddingRight;
                 float yPosition = weekNumberForMonth * heightPerDay + paddingHeight;
 
-                int dayOfMonth = eventsCalendar.get(Calendar.DAY_OF_MONTH);
-                boolean isSameDayAsCurrentDay = (todayDayOfMonth == dayOfMonth && shouldDrawCurrentDayCircle);
-                if (!isSameDayAsCurrentDay) {
-                    if (showSmallIndicator) {
-                        //draw small indicators below the day in the calendar
-                        drawSmallIndicatorCircle(canvas, xPosition, yPosition + 15, event.getColor());
-                    } else {
-                        drawCircle(canvas, xPosition, yPosition, event.getColor());
-                    }
+                if (showSmallIndicator) {
+                    //draw small indicators below the day in the calendar
+                    drawSmallIndicatorCircle(canvas, xPosition, yPosition, event.getColor());
+                } else {
+                    drawCircle(canvas, xPosition, yPosition, event.getColor());
                 }
 
             }
@@ -608,8 +605,6 @@ class CompactCalendarController {
     }
 
     void drawMonth(Canvas canvas, Calendar monthToDrawCalender, int offset) {
-        drawEvents(canvas, monthToDrawCalender, offset);
-
         //offset by one because we want to start from Monday
         int firstDayOfMonth = getDayOfWeek(monthToDrawCalender);
 
@@ -634,27 +629,54 @@ class CompactCalendarController {
             if (dayRow == 0) {
                 // first row, so draw the first letter of the day
                 if (shouldDrawDaysHeader) {
-                    dayPaint.setTypeface(Typeface.DEFAULT_BOLD);
+                    dayPaint.setColor(Color.parseColor("#54000000"));
                     canvas.drawText(dayColumnNames[dayColumn], xPosition, paddingHeight, dayPaint);
+                    dayPaint.setColor(calenderTextColor);
                     dayPaint.setTypeface(Typeface.DEFAULT);
                 }
             } else {
                 int day = ((dayRow - 1) * 7 + dayColumn + 1) - firstDayOfMonth;
                 float yPosition = dayRow * heightPerDay + paddingHeight;
-                if (isSameYearAsToday && isSameMonthAsToday && todayDayOfMonth == day) {
-                    // TODO calculate position of circle in a more reliable way
-                    drawCircle(canvas, xPosition, yPosition, currentDayBackgroundColor);
-                } else if (currentCalender.get(Calendar.DAY_OF_MONTH) == day && isSameMonthAsCurrentCalendar) {
+                boolean isCurrentlySelected = false;
+                if (currentCalender.get(Calendar.DAY_OF_MONTH) == day && isSameMonthAsCurrentCalendar) {
                     drawCircle(canvas, xPosition, yPosition, currentSelectedDayBackgroundColor);
+                    isCurrentlySelected = true;
                 } else if (day == 1 && !isSameMonthAsCurrentCalendar) {
                     drawCircle(canvas, xPosition, yPosition, currentSelectedDayBackgroundColor);
+                    isCurrentlySelected = true;
+                } else if (isSameYearAsToday && isSameMonthAsToday && todayDayOfMonth == day) {
+                    // TODO calculate position of circle in a more reliable way
+                    drawCircle(canvas, xPosition, yPosition, currentDayBackgroundColor);
                 }
+
                 if (day <= monthToDrawCalender.getActualMaximum(Calendar.DAY_OF_MONTH) && day > 0) {
+                    if (isCurrentlySelected) {
+                        dayPaint.setTypeface(Typeface.DEFAULT_BOLD);
+                        dayPaint.setColor(Color.parseColor("#FFFFFF"));
+                    }
                     canvas.drawText(String.valueOf(day), xPosition, yPosition, dayPaint);
+                    dayPaint.setTypeface(Typeface.DEFAULT);
+                    dayPaint.setColor(calenderTextColor);
                 }
             }
 
         }
+
+        drawEvents(canvas, monthToDrawCalender, offset);
+    }
+
+    private int getDefaultEventColor() {
+        int color = -1;
+        if (events != null) {
+            Iterator<List<CalendarDayEvent>> iterator = events.values().iterator();
+            if (iterator.hasNext()) {
+                List<CalendarDayEvent> next = iterator.next();
+                if (next.size() > 0) {
+                    color = next.get(0).getColor();
+                }
+            }
+        }
+        return color;
     }
 
     // Draw Circle on certain days to highlight them
@@ -665,6 +687,7 @@ class CompactCalendarController {
 
     private void drawSmallIndicatorCircle(Canvas canvas, float x, float y, int color) {
         dayPaint.setColor(color);
+        y = y + (5 * screenDensity);
         drawCircle(canvas, smallIndicatorRadius, x, y);
     }
 
